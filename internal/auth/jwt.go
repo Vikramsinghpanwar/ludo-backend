@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("change-this-secret")
+var jwtSecret = []byte("x6Y3f2xsEMv4EcIyNDhXQfTE7P0cNKN9QPgER3NxSvt")
 
 func hashString(s string) string {
 	h := sha256.Sum256([]byte(s))
