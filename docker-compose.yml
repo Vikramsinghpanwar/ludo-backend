@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ludo-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ludo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  migrate:
+    image: migrate/migrate
+    container_name: ludo-migrate
+    depends_on:
+      - postgres
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path", "/migrations",
+        "-database", "postgres://postgres:postgres@postgres:5432/ludo?sslmode=disable",
+        "up"
+      ]
+
+  api:
+    build: .
+    container_name: ludo-api
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      DB_DSN: postgres://postgres:postgres@postgres:5432/ludo?sslmode=disable
+    restart: unless-stopped
+
+volumes:
+  pgdata:
