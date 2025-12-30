@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -10,9 +12,15 @@ import (
 
 type ctxKey string
 
-const UserIDKey ctxKey = "user_id"
+const UserIDKey ctxKey = "sub"
 
-var jwtSecret = []byte("change-this-secret")
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET is not set")
+	}
+	return []byte(secret)
+}
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +40,7 @@ func Auth(next http.Handler) http.Handler {
 		tokenStr := parts[1]
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
+			return getJWTSecret(), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -41,7 +49,7 @@ func Auth(next http.Handler) http.Handler {
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		userID, ok := claims["user_id"].(string)
+		userID, ok := claims["sub"].(string)
 		if !ok {
 			http.Error(w, "invalid token claims", http.StatusUnauthorized)
 			return

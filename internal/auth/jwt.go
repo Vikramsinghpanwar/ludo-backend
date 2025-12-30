@@ -5,12 +5,20 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("x6Y3f2xsEMv4EcIyNDhXQfTE7P0cNKN9QPgER3NxSvt")
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET is not set")
+	}
+	return []byte(secret)
+}
 
 func hashString(s string) string {
 	h := sha256.Sum256([]byte(s))
@@ -19,12 +27,12 @@ func hashString(s string) string {
 
 func generateAccessToken(userID string) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+		"sub": userID,
+		"exp": time.Now().Add(15 * time.Minute).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(getJWTSecret())
 }
 
 func generateRefreshToken() (plain string, hash string, err error) {

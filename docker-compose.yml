@@ -18,12 +18,14 @@ services:
     container_name: ludo-migrate
     depends_on:
       - postgres
+    env_file:
+      - .env
     volumes:
       - ./migrations:/migrations
     command:
       [
         "-path", "/migrations",
-        "-database", "postgres://postgres:postgres@postgres:5432/ludo?sslmode=disable",
+        "-database", "${DB_DSN}",
         "up"
       ]
 
@@ -34,8 +36,8 @@ services:
       - postgres
     ports:
       - "8080:8080"
-    environment:
-      DB_DSN: postgres://postgres:postgres@postgres:5432/ludo?sslmode=disable
+    env_file:
+      - .env
     restart: unless-stopped
 
 volumes:

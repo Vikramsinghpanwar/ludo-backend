@@ -17,6 +17,11 @@ func main() {
 	if dsn == "" {
 		log.Fatal("DATABASE_URL not set")
 	}
+	port := os.Getenv("HTTP_PORT")
+	if port == "" {
+		log.Println("HTTP_PORT not set, defaulting to 8080")
+		port = "8080"
+	}
 	db, err := database.NewPostgres(dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -34,5 +39,5 @@ func main() {
 		AuthHandler: authHandler,
 	})
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
