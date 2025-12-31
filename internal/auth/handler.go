@@ -28,6 +28,32 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (h *Handler) OTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("otp route clicked")
+	var req OTPRequest
+	json.NewDecoder(r.Body).Decode(&req)
+
+	err := h.service.OTP(r.Context(), req)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+}
+
+func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
+	var req VerifyOTPRequest
+	json.NewDecoder(r.Body).Decode(&req)
+
+	res, err := h.service.VerifyOTP(r.Context(), req)
+
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	w.Write([]byte(res))
+	return
+}
+
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	json.NewDecoder(r.Body).Decode(&req)

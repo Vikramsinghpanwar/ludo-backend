@@ -31,15 +31,19 @@ func NewRouter(deps *Dependencies) http.Handler {
 	})
 
 	// auth routes
-	r.Route("/auth", func(r chi.Router) {
-		auth.RegisterRoutes(r, deps.AuthHandler)
-	})
+	if deps.AuthHandler != nil {
+		r.Route("/auth", func(r chi.Router) {
+			auth.RegisterRoutes(r, deps.AuthHandler)
+		})
+	}
 
 	// player routes
-	r.Route("/player", func(r chi.Router) {
-		r.Use(appmw.Auth) // 🔐 protected
-		player.RegisterRoutes(r, deps.PlayerHandler)
-	})
+	if deps.PlayerHandler != nil {
+		r.Route("/player", func(r chi.Router) {
+			r.Use(appmw.Auth) // 🔐 protected
+			player.RegisterRoutes(r, deps.PlayerHandler)
+		})
+	}
 
 	return r
 }

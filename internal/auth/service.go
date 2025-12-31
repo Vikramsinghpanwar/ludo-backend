@@ -2,21 +2,34 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
+	"math/big"
 	"time"
+
+	"github.com/vikramsinghpanwar/ludo-backend/internal/infra/sms"
 )
 
 type Service struct {
-	repo Repository
+	repo      Repository
+	smsSender sms.Sender
 }
 
-func NewService(r Repository) *Service {
-	return &Service{repo: r}
+func NewService(r Repository, sender sms.Sender) *Service {
+	return &Service{
+		repo:      r,
+		smsSender: sender,
+	}
 }
+
+const maxOTPVerifications int = 3
+const maxOTPRequest int = 5
+const OTPResendColldown = 30 * time.Second
 
 func (s *Service) Signup(ctx context.Context, req SignupRequest) error {
 	if len(req.Password) < 6 {
-		return errors.New("weak password")
+		return errors.New("password must be 6 digit long")
 	}
 
 	hash := hashString(req.Password)
@@ -27,7 +40,84 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) error {
 		Status:       "active",
 	}
 
+	tmpUser, err := s.repo.GetOTPRequestByPhone(ctx, req.Phone)
+	if err != nil {
+		return err
+	}
+	fmt.Println(tmpUser.Verified)
+
+	if tmpUser.Verified == false {
+
+		return errors.New("Not verified")
+	}
+
 	return s.repo.CreateUser(ctx, user)
+}
+
+func (s *Service) OTP(ctx context.Context, req OTPRequest) error {
+
+	//otp limiting logic
+
+	otpReq, _ := s.repo.GetOTPRequestByPhone(ctx, req.Phone)
+
+	if otpReq != nil {
+		if otpReq.OTP_Request_Count >= maxOTPRequest {
+			return errors.New("OTP Limit Reached")
+		}
+
+		if time.Since(otpReq.LastSentAt) <= OTPResendColldown {
+			return errors.New("Try after few seconds")
+		}
+	}
+
+	otp, error := generateOTP()
+
+	if error != nil {
+		return fmt.Errorf("failed to generate otp: %w", error)
+	}
+	err := s.smsSender.SendOTP(req.Phone, otp)
+	if err != nil {
+		return err
+	}
+
+	tmpUser := &AuthOTP{
+		Phone:             req.Phone,
+		OTPHash:           hashString(otp),
+		PURPOSE:           req.Purpose,
+		OTP_Request_Count: 1,
+		OTP_Verify_Count:  0,
+		Verified:          false,
+		LastSentAt:        time.Now(),
+		ExpiresAt:         time.Now().Add(15 * time.Minute),
+	}
+
+	e := s.repo.SaveOTPRequest(ctx, tmpUser)
+	if e != nil {
+		return e
+	}
+
+	return nil
+}
+func (s *Service) VerifyOTP(ctx context.Context, req VerifyOTPRequest) (string, error) {
+	err := s.repo.VerifyOTPTransaction(
+		ctx,
+		req.Phone,
+		hashString(req.OTP),
+		maxOTPVerifications,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return "verification successful", nil
+}
+
+func generateOTP() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (*AuthResponse, error) {

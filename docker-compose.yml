@@ -8,6 +8,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ludo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:
@@ -17,7 +22,8 @@ services:
     image: migrate/migrate
     container_name: ludo-migrate
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     volumes:
@@ -33,7 +39,8 @@ services:
     build: .
     container_name: ludo-api
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     env_file:

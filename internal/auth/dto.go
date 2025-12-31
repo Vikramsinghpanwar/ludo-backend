@@ -14,3 +14,13 @@ type AuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
+
+type OTPRequest struct {
+	Phone   string `json:"phone"`
+	Purpose string `json:"purpose"`
+}
+
+type VerifyOTPRequest struct {
+	Phone string `json:"phone"`
+	OTP   string `json:"otp"`
+}
